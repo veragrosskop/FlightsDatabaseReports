@@ -1,6 +1,11 @@
+from pathvalidate.error import ErrorAttrKey
+
 import flights_data
 from datetime import datetime
 import sqlalchemy
+from pandas import DataFrame
+import sys
+from pathvalidate import ValidationError, validate_filename
 
 IATA_LENGTH = 3
 
@@ -69,6 +74,66 @@ def flights_by_date():
     print_results(results)
 
 
+def prompt_csv_export():
+    """
+    Prompts the user to export the results to a CSV file.
+    """
+
+    print("Would you like to export this data to a CSV file? (y/n)")
+
+    while True:
+        try:
+            choice = input().lower()
+            if choice == "y" or "yes":
+                return True
+            if choice == "n" or "no":
+                return False
+
+        except ValueError as e:
+            pass
+
+        print("Not a valid input. Enter 'y' or 'n'. Try again...")
+
+
+def prompt_csv_filename():
+    """
+    Prompts the user to export the results to a CSV file.
+    """
+
+    print("What should the CSV file be named?")
+
+    while True:
+        try:
+            filename = input()
+            validate_filename(filename)
+            if filename.endswith(".csv"):
+                filename = filename
+            else:
+                raise ValidationError(reason="File must end with .csv")
+            return filename
+        except ValidationError as e:
+            print("Not a valid input. Enter a valid file name. Try again...")
+
+
+def export_csv(results):
+
+    print("Exporting data to CSV file...")
+
+    csv_file = prompt_csv_filename()
+
+    columns_to_save = [
+        "ID",
+        "ORIGIN_AIRPORT",
+        "DESTINATION_AIRPORT",
+        "AIRLINE",
+        "DELAY",
+    ]
+    df = DataFrame(results, columns=results[0]._mapping.keys())
+    df_subset = df[columns_to_save]
+    df_subset.to_csv(csv_file, index=False, header=True, encoding="utf-8", mode="a")
+    print("Data exported to CSV file.")
+
+
 def print_results(results):
     """
     Get a list of flight results (List of dictionary-like objects from SQLAachemy).
@@ -100,6 +165,10 @@ def print_results(results):
             )
         else:
             print(f"{result['ID']}. {origin} -> {dest} by {airline}")
+
+    csv_choice = prompt_csv_export()
+    if csv_choice:
+        export_csv(results)
 
 
 def show_menu_and_get_input():
